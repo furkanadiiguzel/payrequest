@@ -57,6 +57,7 @@ The core entity. Represents a formal request from one user to another for money.
 | `expires_at` | timestamptz | DEFAULT now() + interval '7 days' | Expiry deadline |
 | `paid_at` | timestamptz | NULLABLE | Set when status → 'paid' |
 | `declined_at` | timestamptz | NULLABLE | Set when status → 'declined' |
+| `cancelled_at` | timestamptz | NULLABLE | Set when status → 'cancelled' |
 
 **Constraints**:
 - Exactly one of `recipient_email` or `recipient_phone` must be non-null (enforced at application layer in server action, not DB CHECK for flexibility)
@@ -146,7 +147,7 @@ WHERE email = $1
 |-----------|-------|---------|------|
 | pending → paid | Recipient | Clicks "Pay", confirms | `status='paid'`, `paid_at=now()` |
 | pending → declined | Recipient | Clicks "Decline", confirms dialog | `status='declined'`, `declined_at=now()` |
-| pending → cancelled | Sender | Clicks "Cancel", confirms dialog | `status='cancelled'` |
+| pending → cancelled | Sender | Clicks "Cancel", confirms dialog | `status='cancelled'`, `cancelled_at=now()` |
 | pending → expired | System | `expires_at < now()` detected on read/action | `status='expired'` |
 
 **Rules**:
@@ -210,6 +211,7 @@ export interface PaymentRequest {
   expires_at: string;
   paid_at: string | null;
   declined_at: string | null;
+  cancelled_at: string | null;
 }
 
 export interface AuditLog {
