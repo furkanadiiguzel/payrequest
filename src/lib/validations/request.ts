@@ -1,15 +1,14 @@
 import { z } from 'zod';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const E164_RE  = /^\+\d{7,15}$/;
+
 export const createRequestSchema = z.object({
   recipient: z
     .string()
     .min(1, 'Recipient is required')
     .refine(
-      (v) => {
-        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return true;
-        const digits = v.replace(/\D/g, '');
-        return digits.length === 10 || (digits.length === 11 && digits[0] === '1');
-      },
+      (v) => EMAIL_RE.test(v) || E164_RE.test(v),
       { message: 'Enter a valid email address or phone number' }
     ),
   amount: z
@@ -24,5 +23,4 @@ export const createRequestSchema = z.object({
   note: z.string().max(280, 'Note cannot exceed 280 characters').optional(),
 });
 
-// Input type for the form (before transform)
 export type CreateRequestInput = z.input<typeof createRequestSchema>;

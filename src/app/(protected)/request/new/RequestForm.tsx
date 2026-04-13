@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { createRequestSchema, type CreateRequestInput } from '@/lib/validations/request';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PhoneInput from '@/components/PhoneInput';
 import SuccessScreen from './SuccessScreen';
 
 interface RequestFormProps {
@@ -24,32 +25,40 @@ const PARTICLES = [
   { delay: '120ms', left: '10%', color: 'oklch(0.70 0.20 264)' },
 ];
 
+type RecipientMode = 'email' | 'phone';
+
 export default function RequestForm({ userEmail }: RequestFormProps) {
   const [successRequestId, setSuccessRequestId] = useState<string | null>(null);
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>('email');
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     reset,
     setValue,
     setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<CreateRequestInput>({
     resolver: zodResolver(createRequestSchema),
-    defaultValues: { note: '' },
+    defaultValues: { note: '', recipient: '' },
   });
 
-  // Format amount to 2 decimal places on blur (100 → 100.00, 100.1 → 100.10)
+  function switchMode(mode: RecipientMode) {
+    setRecipientMode(mode);
+    setValue('recipient', '');
+    clearErrors('recipient');
+  }
+
+  // Format amount to 2 decimal places on blur
   const amountRegistration = register('amount');
   function handleAmountBlur(e: React.FocusEvent<HTMLInputElement>) {
     const raw = e.target.value.trim();
-    // Only format if it's a valid number; keep invalid values as-is for Zod to report
     if (raw && /^\d+(\.\d*)?$/.test(raw)) {
       const n = parseFloat(raw);
-      if (!isNaN(n)) {
-        setValue('amount', n.toFixed(2), { shouldValidate: false });
-      }
+      if (!isNaN(n)) setValue('amount', n.toFixed(2), { shouldValidate: false });
     }
     amountRegistration.onBlur(e);
   }
@@ -63,6 +72,7 @@ export default function RequestForm({ userEmail }: RequestFormProps) {
         onSendAnother={() => {
           setSuccessRequestId(null);
           reset();
+          setRecipientMode('email');
         }}
       />
     );
@@ -106,14 +116,60 @@ export default function RequestForm({ userEmail }: RequestFormProps) {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" data-testid="request-form">
 
+            {/* Recipient */}
             <div className="space-y-1.5">
-              <Label htmlFor="recipient">Recipient</Label>
-              <Input
-                id="recipient"
-                placeholder="email@example.com or +1 (555) 000-0000"
-                data-testid="request-recipient-input"
-                {...register('recipient')}
-              />
+              <div className="flex items-center justify-between">
+                <Label>Recipient</Label>
+                {/* Email / Phone toggle */}
+                <div className="flex rounded-md border border-border overflow-hidden text-xs font-medium">
+                  <button
+                    type="button"
+                    onClick={() => switchMode('email')}
+                    className={`px-3 py-1 transition-colors ${
+                      recipientMode === 'email'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:text-foreground'
+                    }`}
+                    data-testid="recipient-mode-email"
+                  >
+                    Email
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchMode('phone')}
+                    className={`px-3 py-1 transition-colors ${
+                      recipientMode === 'phone'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:text-foreground'
+                    }`}
+                    data-testid="recipient-mode-phone"
+                  >
+                    Phone
+                  </button>
+                </div>
+              </div>
+
+              {recipientMode === 'email' ? (
+                <Input
+                  placeholder="recipient@example.com"
+                  data-testid="request-recipient-input"
+                  {...register('recipient')}
+                />
+              ) : (
+                <Controller
+                  name="recipient"
+                  control={control}
+                  render={({ field }) => (
+                    <PhoneInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={isSubmitting}
+                      testId="request-recipient"
+                    />
+                  )}
+                />
+              )}
+
               {errors.recipient && (
                 <p className="text-xs text-destructive" data-testid="recipient-error">
                   {errors.recipient.message}
@@ -121,6 +177,7 @@ export default function RequestForm({ userEmail }: RequestFormProps) {
               )}
             </div>
 
+            {/* Amount */}
             <div className="space-y-1.5">
               <Label htmlFor="amount">Amount (USD)</Label>
               <div className="relative">
@@ -136,7 +193,6 @@ export default function RequestForm({ userEmail }: RequestFormProps) {
                   {...amountRegistration}
                   onBlur={handleAmountBlur}
                   onChange={(e) => {
-                    // Prevent more than 2 digits after the decimal point as you type
                     const val = e.target.value;
                     const dotIdx = val.indexOf('.');
                     if (dotIdx !== -1 && val.length - dotIdx > 3) {
@@ -153,6 +209,7 @@ export default function RequestForm({ userEmail }: RequestFormProps) {
               )}
             </div>
 
+            {/* Note */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
                 <Label htmlFor="note">Note <span className="text-muted-foreground font-normal">(optional)</span></Label>
@@ -184,7 +241,7 @@ export default function RequestForm({ userEmail }: RequestFormProps) {
               )}
             </div>
 
-            {/* Submit button with sending animation */}
+            {/* Submit */}
             <div className="relative">
               {isSubmitting && (
                 <div className="absolute inset-x-0 -top-1 flex justify-around pointer-events-none">
@@ -216,9 +273,7 @@ export default function RequestForm({ userEmail }: RequestFormProps) {
                         <span
                           key={i}
                           className="w-1.5 h-1.5 rounded-full bg-primary-foreground"
-                          style={{
-                            animation: `particle-float 0.8s ease-in-out ${i * 150}ms infinite`,
-                          }}
+                          style={{ animation: `particle-float 0.8s ease-in-out ${i * 150}ms infinite` }}
                         />
                       ))}
                     </span>

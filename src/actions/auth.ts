@@ -68,13 +68,30 @@ export async function signupAction(
 ): Promise<{ error: string } | void> {
   const email = (formData.get('email') as string)?.toLowerCase().trim();
   const password = formData.get('password') as string;
+  const phone = (formData.get('phone') as string)?.trim();
+
+  if (!phone) {
+    return { error: 'Phone number is required.' };
+  }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  // Pass phone in metadata so the handle_new_user trigger can insert it
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { phone } },
+  });
 
   if (error || !data.user) {
     return { error: error?.message ?? 'Sign up failed. Please try again.' };
   }
+
+  // Upsert phone on the profile row (handles both trigger-created and pre-existing rows)
+  const service = createServiceClient();
+  await service
+    .from('profiles')
+    .update({ phone })
+    .eq('id', data.user.id);
 
   await writeAuditLog({
     event_type: 'login_success',

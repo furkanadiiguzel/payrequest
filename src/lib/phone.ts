@@ -1,6 +1,10 @@
+const E164_RE = /^\+\d{7,15}$/;
+
+/**
+ * Accepts a full E.164 string (e.g. "+905321234567") produced by PhoneInput.
+ * Returns the value as-is if valid, null otherwise.
+ */
 export function normalizePhone(raw: string): string | null {
-  const digits = raw.replace(/\D/g, '');
-  const normalized =
-    digits.length === 11 && digits[0] === '1' ? digits.slice(1) : digits;
-  return normalized.length === 10 ? normalized : null;
+  const trimmed = raw.trim();
+  return E164_RE.test(trimmed) ? trimmed : null;
 }

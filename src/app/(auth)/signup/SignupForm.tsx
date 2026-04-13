@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { signupSchema, type SignupInput } from '@/lib/validations/auth';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PhoneInput from '@/components/PhoneInput';
 import { useState } from 'react';
 
 export default function SignupForm() {
@@ -17,10 +18,12 @@ export default function SignupForm() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
+    defaultValues: { phone: '' },
   });
 
   async function onSubmit(data: SignupInput) {
@@ -29,6 +32,7 @@ export default function SignupForm() {
     const formData = new FormData();
     formData.set('email', data.email);
     formData.set('password', data.password);
+    formData.set('phone', data.phone);
 
     const result = await signupAction(formData);
     if (result?.error) {
@@ -65,6 +69,27 @@ export default function SignupForm() {
             {errors.email && (
               <p className="text-xs text-destructive" data-testid="email-error">
                 {errors.email.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <Label>Phone number</Label>
+            <Controller
+              name="phone"
+              control={control}
+              render={({ field }) => (
+                <PhoneInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={isSubmitting}
+                  testId="signup-phone"
+                />
+              )}
+            />
+            {errors.phone && (
+              <p className="text-xs text-destructive" data-testid="phone-error">
+                {errors.phone.message}
               </p>
             )}
           </div>

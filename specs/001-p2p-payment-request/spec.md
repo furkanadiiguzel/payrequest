@@ -23,24 +23,25 @@ A new or returning user registers or logs in to access PayRequest. Without an au
 
 **Why this priority**: All other functionality depends on a verified user identity. This is the entry gate to every protected feature — no downstream story is testable without it.
 
-**Independent Test**: Can be fully tested by signing up with a new email and password, verifying auto-login and dashboard redirect, then logging out and logging back in with those credentials. Delivers a complete auth loop independent of payment functionality.
+**Independent Test**: Can be fully tested by signing up with a valid email, phone number, and password, verifying auto-login and dashboard redirect, then logging out and logging back in with those credentials. Delivers a complete auth loop independent of payment functionality.
 
 **Acceptance Scenarios**:
 
-1. **Given** an unregistered visitor on /signup, **When** they submit a valid email and a password of at least 6 characters, **Then** they are automatically logged in and redirected to /dashboard
+1. **Given** an unregistered visitor on /signup, **When** they submit a valid email, a valid phone number (country code + local number), and a password of at least 6 characters, **Then** they are automatically logged in and redirected to /dashboard
 2. **Given** a sign-up attempt using an email already registered, **When** submitted, **Then** an inline error describes the conflict and the user remains on /signup
 3. **Given** a sign-up attempt with a password shorter than 6 characters, **When** submitted, **Then** an inline error is shown and the form is not submitted
-4. **Given** a registered user on /login, **When** they submit correct credentials, **Then** they are redirected to /dashboard (or to the preserved return URL if one exists)
-5. **Given** a registered user on /login, **When** they submit incorrect credentials, **Then** they see the message "Invalid email or password"
-6. **Given** a logged-in user, **When** they click "Log Out" in the navigation menu, **Then** their session is cleared and they are redirected to /login
-7. **Given** an unauthenticated visitor accessing a protected route (e.g., /dashboard), **When** they land on that URL, **Then** they are redirected to /login with the original URL preserved as a return URL
-8. **Given** a user who has exceeded the consecutive failed login limit for their email address, **When** they attempt another login, **Then** further attempts are temporarily blocked and a message informs them the account is locked (specific threshold and lockout duration are defined during planning)
+4. **Given** a sign-up attempt with no phone number entered, **When** submitted, **Then** an inline error appears: "Phone number is required"
+5. **Given** a registered user on /login, **When** they submit correct credentials, **Then** they are redirected to /dashboard (or to the preserved return URL if one exists)
+6. **Given** a registered user on /login, **When** they submit incorrect credentials, **Then** they see the message "Invalid email or password"
+7. **Given** a logged-in user, **When** they click "Log Out" in the navigation menu, **Then** their session is cleared and they are redirected to /login
+8. **Given** an unauthenticated visitor accessing a protected route (e.g., /dashboard), **When** they land on that URL, **Then** they are redirected to /login with the original URL preserved as a return URL
+9. **Given** a user who has exceeded the consecutive failed login limit for their email address, **When** they attempt another login, **Then** further attempts are temporarily blocked and a message informs them the account is locked (specific threshold and lockout duration are defined during planning)
 
 ---
 
 ### User Story 2 - Create a Payment Request (Priority: P2)
 
-A logged-in user sends a payment request to another person by specifying a recipient (email address or US phone number), a dollar amount, and an optional short note.
+A logged-in user sends a payment request to another person by specifying a recipient (email address or international phone number with country code), a dollar amount, and an optional short note.
 
 **Why this priority**: Creating a payment request is the core action that generates all downstream value. Without at least one request, the dashboard, detail view, and all action flows have nothing to operate on.
 
@@ -49,9 +50,10 @@ A logged-in user sends a payment request to another person by specifying a recip
 **Acceptance Scenarios**:
 
 1. **Given** a logged-in user on the new-request form, **When** they enter a valid email, a valid amount, an optional note, and click "Send Request", **Then** a request is created with status "pending" and an expiry 7 days from now, and a success screen appears with a copyable shareable link
-2. **Given** a valid US phone number in any accepted format (e.g., "+1 (555) 123-4567", "555-123-4567", "5551234567"), **When** entered as the recipient, **Then** the request is created successfully
-3. **Given** a recipient identifier that is an invalid email format, **When** submitted, **Then** an inline error appears: "Please enter a valid email address"
-4. **Given** a recipient identifier that is not a valid 10-digit US phone number, **When** submitted, **Then** an inline error appears: "Please enter a valid US phone number (10 digits)"
+2. **Given** the recipient field in "Phone" mode, **When** the user selects a country (e.g., Turkey +90) and enters a local number, **Then** the full E.164 number (e.g., +905321234567) is submitted and the request is created successfully
+3. **Given** the recipient toggle, **When** the user switches between "Email" and "Phone" modes, **Then** the input field changes accordingly and any previous value is cleared
+4. **Given** a recipient identifier that is an invalid email format (in Email mode), **When** submitted, **Then** an inline error appears: "Enter a valid email address or phone number"
+5. **Given** a phone number that does not meet E.164 format (in Phone mode), **When** submitted, **Then** an inline error appears: "Enter a valid email address or phone number"
 5. **Given** an amount of $0.00 or less, **When** submitted, **Then** an inline error appears: "Amount must be greater than $0.00"
 6. **Given** an amount exceeding $10,000.00, **When** submitted, **Then** an inline error appears: "Amount cannot exceed $10,000.00"
 7. **Given** an amount with more than 2 decimal places (e.g., "25.555"), **When** submitted, **Then** an inline error appears: "Amount can have at most 2 decimal places"
@@ -164,7 +166,9 @@ Anyone who receives a request link can view the basic request details without an
 
 **Authentication**
 
-- **FR-001**: System MUST allow users to register with an email address and a password of at least 6 characters
+- **FR-001**: System MUST allow users to register with an email address, a phone number (country code + local number in E.164 format), and a password of at least 6 characters; all three fields are mandatory
+- **FR-001a**: System MUST provide a country selector on the signup form showing country flag, name, and dial code (e.g., 🇹🇷 Turkey +90); default selection is Turkey (+90)
+- **FR-001b**: System MUST store the user's phone number in E.164 format (e.g., +905321234567) in their profile record at sign-up time
 - **FR-002**: System MUST automatically log in a newly registered user and redirect them to /dashboard
 - **FR-003**: System MUST authenticate registered users via email and password and redirect them to /dashboard or a preserved return URL
 - **FR-004**: System MUST show the message "Invalid email or password" on failed login attempts
@@ -176,10 +180,12 @@ Anyone who receives a request link can view the basic request details without an
 
 **Payment Request Creation**
 
-- **FR-007**: System MUST allow a logged-in user to create a payment request specifying: a recipient identifier (email or US phone), a dollar amount, and an optional note
+- **FR-007**: System MUST allow a logged-in user to create a payment request specifying: a recipient identifier (email or international phone number), a dollar amount, and an optional note
+- **FR-007a**: System MUST provide an Email / Phone toggle on the request form; selecting "Phone" reveals a country selector (same country list as signup) and a local number input that together produce an E.164 recipient value
+- **FR-007b**: Switching between Email and Phone mode MUST clear the recipient field and any existing validation errors for that field
 - **FR-008**: System MUST assign each new request a unique ID, a status of "pending", and an expiry timestamp exactly 7 days after the creation timestamp
 - **FR-009**: System MUST accept dollar amounts from $0.01 to $10,000.00 with at most 2 decimal places, and store the value as integer cents
-- **FR-010**: System MUST validate that a recipient identifier is either a properly formatted email address or a 10-digit US phone number (after stripping country code prefix "+1" and formatting characters: spaces, dashes, parentheses)
+- **FR-010**: System MUST validate that a recipient identifier is either a properly formatted email address or a valid E.164 phone number (starts with +, followed by 7–15 digits)
 - **FR-011**: System MUST reject a request where the recipient identifier exactly matches the logged-in user's registered email address, showing: "You cannot request money from yourself"
 - **FR-012**: System MUST accept notes of 0–280 characters in plain text, trimmed of leading and trailing whitespace, and reject notes that exceed 280 characters with a red character counter and disabled submit button
 - **FR-013**: System MUST display a success confirmation screen after creation, showing a copyable shareable link (/request/{uuid}) with options to "Send another" or "Go to dashboard"
@@ -265,11 +271,11 @@ Anyone who receives a request link can view the basic request details without an
 
 ## Assumptions
 
-- Authentication is email and password only for MVP; phone number sign-up, phone verification, and linking a phone number to a user account are out of scope
+- Authentication requires email, phone number, and password; phone is stored in E.164 format in the user profile at sign-up; phone verification (SMS OTP) is out of scope for MVP
 - Light fintech compliance is in scope: all status transitions and authentication events must be recorded in an immutable audit trail; sessions must have enforced inactivity and absolute lifetime limits
 - Specific numeric thresholds for session timeout and absolute session lifetime are to be determined during planning (typical fintech defaults: 30-minute inactivity, 8-hour absolute maximum)
 - PCI-DSS, BSA/AML, and KYC obligations are not triggered because no real funds transfer occurs; those compliance layers are deferred to when real payment rails are introduced
-- The Received tab matches incoming requests against the logged-in user's registered email address only; requests sent to a phone number cannot be surfaced in the Received tab unless the authenticated user's registered email was used as the recipient identifier
+- The Received tab matches incoming requests against the logged-in user's registered email address only; requests sent to a phone number are accessible only via the direct shareable link, not through the Received tab
 - No email or SMS notifications are sent for MVP — users discover incoming requests by checking the dashboard or following a shared link
 - No real payment processing or financial transfer occurs — the "Pay" action is simulated with a 2–3 second artificial delay
 - The partially masked sender email format for unauthenticated views is: first character of the local part, then "***", then "@", then the full domain (e.g., "j***@gmail.com")
