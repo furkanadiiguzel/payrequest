@@ -1,7 +1,17 @@
 import { z } from 'zod';
 
 export const createRequestSchema = z.object({
-  recipient: z.string().min(1, 'Recipient is required'),
+  recipient: z
+    .string()
+    .min(1, 'Recipient is required')
+    .refine(
+      (v) => {
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return true;
+        const digits = v.replace(/\D/g, '');
+        return digits.length === 10 || (digits.length === 11 && digits[0] === '1');
+      },
+      { message: 'Enter a valid email address or phone number' }
+    ),
   amount: z
     .string()
     .regex(/^\d+(\.\d{1,2})?$/, 'Amount can have at most 2 decimal places')

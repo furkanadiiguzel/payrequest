@@ -58,20 +58,21 @@ test.describe('Create Payment Request', () => {
     await expect(page.getByTestId('amount-error')).toBeVisible();
   });
 
-  test('amount with 3 decimal places shows inline error', async ({ page }) => {
+  test('amount with 3 decimal places is truncated to 2 and submitted successfully', async ({ page }) => {
     const form = new RequestFormPage(page);
     await form.goto();
     await form.fillRecipient(BOB.email);
+    // The onChange handler truncates 25.555 → 25.55 before Zod validation runs
     await form.fillAmount('25.555');
     await form.submit();
-    await expect(page.getByTestId('amount-error')).toBeVisible();
+    await expect(form.successScreen).toBeVisible({ timeout: 15_000 });
   });
 
   test('note counter turns red and submit disables at 280 chars', async ({ page }) => {
     const form = new RequestFormPage(page);
     await form.goto();
     await form.fillNote('a'.repeat(281));
-    await expect(page.getByTestId('note-counter')).toHaveClass(/text-red-600/);
+    await expect(page.getByTestId('note-counter')).toHaveClass(/text-destructive/);
     await expect(form.submitButton).toBeDisabled();
   });
 

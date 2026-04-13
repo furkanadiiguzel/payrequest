@@ -1,50 +1,62 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# PayRequest Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Money as Integer Cents (NON-NEGOTIABLE)
+All monetary amounts are stored and passed as integer cents (e.g., $25.00 = 2500). Conversion to display format (`$XX.XX`) happens only at render time via `centsToDollars()`. Never store or pass floats for money. Use `Math.round(parseFloat(amount) * 100)` for input conversion.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Server-Only Identity (NON-NEGOTIABLE)
+Server actions and API routes MUST call `supabase.auth.getUser()` to establish the caller's identity. Never accept user IDs from client-passed form data or request bodies. The `SUPABASE_SERVICE_ROLE_KEY` is server-only — never in `NEXT_PUBLIC_` variables, never imported in client components.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Immutable Audit Trail
+All status transitions and authentication events MUST be written to `audit_logs` via `writeAuditLog()` using the service role client. The audit log table has INSERT-only RLS — no UPDATE or DELETE is ever granted. This log must survive even if a user is deleted (no FK constraint on `actor_id`).
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Dark Fintech UI (NON-NEGOTIABLE)
+PayRequest uses a **permanent dark theme** with no light mode. Implementation rules:
+- Set `class="dark"` unconditionally on `<html>` in `src/app/layout.tsx`
+- All colors defined via CSS custom properties in `src/app/globals.css` using oklch color space
+- **Never use hardcoded Tailwind color classes** (`bg-white`, `bg-gray-50`, `text-gray-900`, `text-indigo-600`, `bg-red-50`, etc.)
+- Always use semantic tokens: `bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`, `text-primary`, `text-destructive`, `border-border`
+- Error messages: `bg-destructive/10 text-destructive`
+- Brand links: `text-primary hover:text-primary/80`
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+**Brand palette (oklch):**
+- Background: `oklch(0.09 0.016 264)` — deep blue-black
+- Card surface: `oklch(0.13 0.014 264)`
+- Brand indigo: `oklch(0.61 0.22 264)`
+- Muted text: `oklch(0.52 0.03 264)`
+- Destructive (red): `oklch(0.60 0.22 27)`
+- Border: `oklch(0.23 0.022 264)`
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**Status badge colors (dark-optimized):**
+- pending → `bg-amber-500/15 text-amber-300`
+- paid → `bg-emerald-500/15 text-emerald-300`
+- declined → `bg-red-500/15 text-red-300`
+- expired/cancelled → `bg-slate-500/15 text-slate-400`
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### V. Playwright E2E Coverage
+All user-facing interactive features require Playwright E2E coverage. Tests use Page Object Models with `data-testid` selectors. `data-testid` attributes are added during implementation, not as an afterthought. Two seed users (ALICE, BOB) created in `tests/global-setup.ts` via Supabase Admin API. Each test is isolated — creates its own data via `tests/helpers/db.ts`.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+### VI. TypeScript Strict Mode
+TypeScript strict mode is enabled. No `any` without explicit justification comment. No non-null assertions (`!`) without justification. Zod schemas are the single source of truth for validation — shared between client forms and server actions.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+## Technology Stack (Locked)
+
+- **Frontend**: Next.js 14+ App Router, TypeScript 5.x, Tailwind CSS v4, shadcn/ui
+- **Backend**: Supabase (PostgreSQL + Auth), `@supabase/ssr` for session management
+- **Testing**: Playwright E2E
+- **Deployment**: Vercel
+
+## Security Requirements
+
+- Login rate limiting: 5 failures in 15-minute rolling window → 15-minute lockout
+- Session inactivity timeout: 30 minutes (IdleTimer client component)
+- Session absolute lifetime: 8 hours (Supabase refresh token expiry)
+- RLS on all tables — no raw service role in client code
+- Return URL validation: only accept paths starting with `/`
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other practices. The design system (Principle IV) is locked — any future `/speckit-plan` invocation for PayRequest features MUST preserve the dark fintech palette and semantic token conventions.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-04-12

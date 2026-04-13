@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -7,9 +8,22 @@ import RequestDetailClient from './RequestDetailClient';
 import Link from 'next/link';
 import { centsToDollars } from '@/lib/currency';
 import StatusBadge from '@/components/StatusBadge';
+import ExpiryCountdown from '@/components/ExpiryCountdown';
 
 interface RequestDetailPageProps {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: RequestDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const service = createServiceClient();
+  const { data: request } = await service
+    .from('payment_requests')
+    .select('amount_cents')
+    .eq('id', id)
+    .single();
+  if (!request) return { title: 'Request Not Found' };
+  return { title: `Request for ${centsToDollars(request.amount_cents)}` };
 }
 
 export default async function RequestDetailPage({ params }: RequestDetailPageProps) {
@@ -41,42 +55,61 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     const maskedEmail = maskEmail(senderProfile?.email ?? '');
 
     return (
-      <div className="max-w-lg mx-auto space-y-4">
+      <div className="max-w-lg mx-auto space-y-4" style={{ animation: 'slide-in-up 0.3s ease-out both' }}>
         {effective.status === 'expired' && (
-          <div className="rounded-md bg-amber-50 border border-amber-200 p-4 text-amber-800 text-sm font-medium">
-            This request has expired
+          <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-4 text-amber-400 text-sm font-medium flex items-center gap-2">
+            <span>⚠</span> This request has expired and can no longer be paid
           </div>
         )}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <div className="text-center">
-            <p className="text-4xl font-bold text-gray-900">{centsToDollars(request.amount_cents)}</p>
-            <div className="mt-2">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          {/* Amount hero */}
+          <div className="px-6 pt-8 pb-6 text-center border-b border-border">
+            <p className="text-5xl font-bold text-foreground tabular-nums tracking-tight" data-testid="request-amount">
+              {centsToDollars(request.amount_cents)}
+            </p>
+            <div className="mt-3 flex justify-center">
               <StatusBadge status={effective.status} />
             </div>
           </div>
-          {request.note && (
-            <div className="rounded-md bg-gray-50 p-3">
-              <p className="text-sm text-gray-700">{request.note}</p>
+
+          {/* Details */}
+          <div className="px-6 py-5 space-y-4">
+            {request.note && (
+              <div className="rounded-xl bg-muted/60 border border-border/60 px-4 py-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Note</p>
+                <p className="text-sm text-foreground leading-relaxed">{request.note}</p>
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">From</span>
+              <span className="font-medium text-foreground">{maskedEmail}</span>
             </div>
-          )}
-          <p className="text-sm text-gray-500">
-            From: <span className="font-medium text-gray-700">{maskedEmail}</span>
-          </p>
+            {effective.status === 'pending' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Expires</span>
+                <ExpiryCountdown expiresAt={request.expires_at} />
+              </div>
+            )}
+          </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
+
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
+          <p className="text-xs text-muted-foreground text-center">
+            Log in or sign up to respond to this request
+          </p>
           <Link
             href={`/login?returnUrl=/request/${id}`}
-            className="block w-full text-center rounded-md bg-indigo-600 text-white py-2 px-4 text-sm font-medium hover:bg-indigo-500"
+            className="block w-full text-center rounded-lg bg-primary text-primary-foreground py-2.5 px-4 text-sm font-semibold hover:bg-primary/90 transition-colors"
             data-testid="login-to-respond-btn"
           >
             Log in to respond
           </Link>
           <Link
             href={`/signup?returnUrl=/request/${id}`}
-            className="block w-full text-center rounded-md border border-gray-300 text-gray-700 py-2 px-4 text-sm font-medium hover:bg-gray-50"
+            className="block w-full text-center rounded-lg border border-border text-foreground py-2.5 px-4 text-sm font-medium hover:bg-accent transition-colors"
             data-testid="signup-link"
           >
-            Sign up
+            Create an account
           </Link>
         </div>
       </div>

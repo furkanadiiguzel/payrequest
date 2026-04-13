@@ -9,9 +9,9 @@ export class SignupPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.emailInput = page.getByTestId('signup-email');
-    this.passwordInput = page.getByTestId('signup-password');
-    this.submitButton = page.getByTestId('signup-submit');
+    this.emailInput = page.getByTestId('signup-email-input');
+    this.passwordInput = page.getByTestId('signup-password-input');
+    this.submitButton = page.getByTestId('signup-submit-button');
     this.errorMessage = page.getByTestId('signup-error');
   }
 
@@ -29,6 +29,14 @@ export class SignupPage {
 
   async submit() {
     await this.submitButton.click();
+  }
+
+  async signup(email: string, password: string) {
+    await this.goto();
+    await this.fillEmail(email);
+    await this.fillPassword(password);
+    await this.submit();
+    await this.page.waitForURL('/dashboard', { timeout: 15_000 });
   }
 
   async getError() {

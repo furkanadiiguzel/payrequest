@@ -151,6 +151,92 @@ Test videos are saved to `playwright-report/`. Screenshots are saved on failure 
 
 ---
 
+## Design System — Rebuild Instructions
+
+This section is **required reading** when regenerating the UI from specs. The design system is locked and must be reproduced exactly.
+
+### Theme: Always-Dark Fintech
+
+```css
+/* src/app/globals.css — override the shadcn/ui defaults */
+:root,
+.dark {
+  color-scheme: dark;
+  --background:   oklch(0.09 0.016 264);   /* deep blue-black */
+  --foreground:   oklch(0.93 0.008 264);   /* near-white, blue tint */
+  --card:         oklch(0.13 0.014 264);   /* dark card surface */
+  --card-foreground: oklch(0.93 0.008 264);
+  --popover:      oklch(0.13 0.014 264);
+  --popover-foreground: oklch(0.93 0.008 264);
+  --primary:      oklch(0.61 0.22 264);    /* indigo-500 brand */
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary:    oklch(0.18 0.018 264);
+  --secondary-foreground: oklch(0.93 0.008 264);
+  --muted:        oklch(0.18 0.018 264);
+  --muted-foreground: oklch(0.52 0.03 264);
+  --accent:       oklch(0.21 0.02 264);
+  --accent-foreground: oklch(0.93 0.008 264);
+  --destructive:  oklch(0.60 0.22 27);     /* red */
+  --border:       oklch(0.23 0.022 264);
+  --input:        oklch(0.16 0.016 264);
+  --ring:         oklch(0.61 0.22 264);
+  --radius: 0.625rem;
+}
+```
+
+The `dark` class MUST be set unconditionally on `<html>` in `src/app/layout.tsx`:
+```tsx
+<html lang="en" className={`${fonts} dark`}>
+```
+
+### Required CSS Animations (add to globals.css)
+
+```css
+@keyframes check-draw   { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@keyframes pop-scale    { 0% { transform: scale(0); opacity: 0; } 65% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes ring-expand  { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.4); opacity: 0; } }
+@keyframes slide-in-up  { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes particle-float { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-72px) scale(0.3); } }
+@keyframes glow-pulse   { 0%, 100% { box-shadow: 0 0 0 0 oklch(0.61 0.22 264 / 0.45); } 50% { box-shadow: 0 0 18px 4px oklch(0.61 0.22 264 / 0); } }
+@keyframes fade-in      { from { opacity: 0; } to { opacity: 1; } }
+/* Confetti: confetti-a through confetti-e with different translate directions */
+```
+
+### Semantic Token Rules (NEVER use hardcoded colors)
+
+| Don't use | Use instead |
+|-----------|-------------|
+| `bg-white`, `bg-gray-50/100` | `bg-background`, `bg-card`, `bg-muted` |
+| `text-gray-900`, `text-gray-700` | `text-foreground` |
+| `text-gray-500`, `text-gray-400` | `text-muted-foreground` |
+| `text-indigo-600` | `text-primary` |
+| `hover:text-indigo-500` | `hover:text-primary/80` |
+| `border-gray-200` | `border-border` |
+| `bg-red-50 text-red-700` | `bg-destructive/10 text-destructive` |
+| `text-red-600` | `text-destructive` |
+
+### Status Badge Classes
+
+```tsx
+pending:   'bg-amber-500/15 text-amber-300'
+paid:      'bg-emerald-500/15 text-emerald-300'
+declined:  'bg-red-500/15 text-red-300'
+expired:   'bg-slate-500/15 text-slate-400'
+cancelled: 'bg-slate-500/15 text-slate-400' + strikethrough span
+```
+
+### Component Architecture Notes
+
+- `src/components/ExpiryCountdown.tsx` — client component, live countdown with urgency colors
+- `src/components/AnimatedCheck.tsx` — SVG checkmark with `check-draw` + `pop-scale` animations
+- Dashboard has a stats bar (4 `StatCard` components: pending sent/received, total sent/received)
+- `RequestCard` has a left-side colored accent bar keyed to status, plus hover glow
+- `RequestForm` has particle animation on submit button during sending state
+- `SuccessScreen` uses `AnimatedCheck` with ring-expand pulse behind it
+- `PaymentSuccessOverlay` has CSS confetti particles in 5 colors
+
+---
+
 ## Architecture Quick Reference
 
 | Concern | Location |

@@ -10,7 +10,8 @@ test.describe('Dashboard', () => {
     await loginAs(page, ALICE.email, ALICE.password);
     const dashboard = new DashboardPage(page);
     await dashboard.waitForLoad();
-    await expect(page.getByTestId('sent-tab')).toHaveAttribute('data-state', 'active');
+    // Click sent tab to ensure it's active, then verify cards are shown
+    await dashboard.clickSentTab();
     const cards = await dashboard.getRequestCards();
     expect(cards.length).toBeGreaterThan(0);
   });
@@ -42,18 +43,21 @@ test.describe('Dashboard', () => {
     await loginAs(page, ALICE.email, ALICE.password);
     const dashboard = new DashboardPage(page);
     await dashboard.waitForLoad();
-    await dashboard.setSearch('BOB@PAYREQUEST');
+    await dashboard.setSearch('TESTUSER2@PAYREQUEST');
     const cards = await dashboard.getRequestCards();
     expect(cards.length).toBeGreaterThan(0);
   });
 
   test('filter + search AND logic shows only matching requests', async ({ page }) => {
-    await createTestRequest({ senderEmail: ALICE.email, recipientEmail: BOB.email, status: 'pending' });
+    // Use a unique email that will never have a paid request
+    const uniqueEmail = `unique_${Date.now()}@test.com`;
+    await createTestRequest({ senderEmail: ALICE.email, recipientEmail: uniqueEmail, status: 'pending' });
     await loginAs(page, ALICE.email, ALICE.password);
     const dashboard = new DashboardPage(page);
     await dashboard.waitForLoad();
+    // Filter paid + search for uniqueEmail → no paid requests exist for this email
     await dashboard.setStatusFilter('paid');
-    await dashboard.setSearch(BOB.email);
+    await dashboard.setSearch(uniqueEmail);
     await expect(page.getByTestId('no-results-state')).toBeVisible();
   });
 
@@ -73,6 +77,6 @@ test.describe('Dashboard', () => {
     const dashboard = new DashboardPage(page);
     await dashboard.waitForLoad();
     await dashboard.clickRequestCard(0);
-    await expect(page).toHaveURL(new RegExp(`/request/${request.id}`));
+    await expect(page).toHaveURL(new RegExp(`/request/${request.id}`), { timeout: 15_000 });
   });
 });

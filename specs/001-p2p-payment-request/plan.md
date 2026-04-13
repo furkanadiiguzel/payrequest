@@ -138,6 +138,46 @@ tests/
 
 **Structure Decision**: Single full-stack web application (Next.js App Router). Route groups `(auth)` and `(protected)` provide layout isolation without URL segments. The `/request/[id]` route sits outside both groups because it must serve both authenticated and unauthenticated viewers.
 
+## Design Direction
+
+### Color System — Always-Dark Fintech Theme
+
+PayRequest uses a **permanent dark UI** (no light mode). The color system is defined via CSS custom properties using the oklch color space in `src/app/globals.css`. The `dark` class is set on `<html>` unconditionally.
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--background` | `oklch(0.09 0.016 264)` | Page background (deep blue-black) |
+| `--foreground` | `oklch(0.93 0.008 264)` | Primary text (near-white with blue tint) |
+| `--card` | `oklch(0.13 0.014 264)` | Card/surface background |
+| `--primary` | `oklch(0.61 0.22 264)` | Brand color (indigo-500 equivalent) |
+| `--primary-foreground` | `oklch(0.99 0 0)` | Text on primary |
+| `--secondary` | `oklch(0.18 0.018 264)` | Secondary surface |
+| `--muted` | `oklch(0.18 0.018 264)` | Muted background |
+| `--muted-foreground` | `oklch(0.52 0.03 264)` | Secondary/muted text |
+| `--accent` | `oklch(0.21 0.02 264)` | Hover accent surface |
+| `--destructive` | `oklch(0.60 0.22 27)` | Errors and destructive actions (red) |
+| `--border` | `oklch(0.23 0.022 264)` | Borders |
+| `--input` | `oklch(0.16 0.016 264)` | Input background |
+| `--ring` | `oklch(0.61 0.22 264)` | Focus ring |
+
+### Status Badge Colors (dark-optimized)
+
+| Status | Background | Text |
+|--------|-----------|------|
+| pending | `bg-amber-500/15` | `text-amber-300` |
+| paid | `bg-emerald-500/15` | `text-emerald-300` |
+| declined | `bg-red-500/15` | `text-red-300` |
+| expired | `bg-slate-500/15` | `text-slate-400` |
+| cancelled | `bg-slate-500/15` strikethrough | `text-slate-400` |
+
+### Component Conventions
+
+- **Never use hardcoded Tailwind color classes** like `bg-white`, `bg-gray-50`, `text-gray-900` — always use semantic tokens (`bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`)
+- **Error messages**: `bg-destructive/10 text-destructive` (not `bg-red-50 text-red-700`)
+- **Links**: `text-primary hover:text-primary/80` (not `text-indigo-600 hover:text-indigo-500`)
+- **Borders**: `border-border` (not `border-gray-200`)
+- Overlays: `bg-background/95 backdrop-blur-sm` (not `bg-white/95`)
+
 ## Complexity Tracking
 
 > No constitution violations to justify — constitution placeholder is unfilled.

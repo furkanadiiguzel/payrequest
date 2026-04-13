@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { type PaymentRequest } from '@/types/database';
 import { centsToDollars } from '@/lib/currency';
 import StatusBadge from '@/components/StatusBadge';
+import ExpiryCountdown from '@/components/ExpiryCountdown';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -34,16 +35,11 @@ export default function RequestDetailClient({
   const [showDeclineDialog, setShowDeclineDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isActing, setIsActing] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [successData, setSuccessData] = useState<{
     amountCents: number;
     senderEmail: string;
   } | null>(null);
-  const [now, setNow] = useState(new Date());
-
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(t);
-  }, []);
 
   const counterparty =
     request.recipient_email ?? request.recipient_phone ?? 'Unknown';
@@ -51,7 +47,8 @@ export default function RequestDetailClient({
   function handleCopyLink() {
     const url = `${window.location.origin}/request/${request.id}`;
     navigator.clipboard.writeText(url);
-    toast.success('Link copied!');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   function handlePay() {
@@ -74,6 +71,7 @@ export default function RequestDetailClient({
       toast.error(result.error);
       return;
     }
+    toast.success('Request declined');
     router.push('/dashboard');
   }
 
@@ -86,21 +84,22 @@ export default function RequestDetailClient({
       toast.error(result.error);
       return;
     }
+    toast.success('Request cancelled');
     router.push('/dashboard');
   }
 
-  function terminalTimestamp() {
+  function terminalTimestamp(): string | null {
     if (request.status === 'paid' && request.paid_at) {
-      return `Paid on ${format(new Date(request.paid_at), 'MMMM d, yyyy')}`;
+      return `Paid ${formatDistanceToNow(new Date(request.paid_at), { addSuffix: true })}`;
     }
     if (request.status === 'declined' && request.declined_at) {
-      return `Declined on ${format(new Date(request.declined_at), 'MMMM d, yyyy')}`;
+      return `Declined ${formatDistanceToNow(new Date(request.declined_at), { addSuffix: true })}`;
     }
     if (request.status === 'cancelled' && request.cancelled_at) {
-      return `Cancelled on ${format(new Date(request.cancelled_at), 'MMMM d, yyyy')}`;
+      return `Cancelled ${formatDistanceToNow(new Date(request.cancelled_at), { addSuffix: true })}`;
     }
     if (request.status === 'expired') {
-      return `This request expired on ${format(new Date(request.expires_at), 'MMMM d, yyyy')}`;
+      return `Expired ${formatDistanceToNow(new Date(request.expires_at), { addSuffix: true })}`;
     }
     return null;
   }
@@ -114,74 +113,124 @@ export default function RequestDetailClient({
     );
   }
 
+  const termTs = terminalTimestamp();
+
   return (
-    <div className="max-w-lg mx-auto space-y-4">
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <div className="text-center">
-          <p className="text-4xl font-bold text-gray-900" data-testid="request-amount">
+    <div
+      className="max-w-lg mx-auto space-y-4"
+      style={{ animation: 'slide-in-up 0.3s ease-out both' }}
+    >
+      {/* Main card */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        {/* Amount header */}
+        <div className="px-6 pt-8 pb-6 text-center border-b border-border">
+          <p
+            className="text-5xl font-bold text-foreground tabular-nums tracking-tight"
+            data-testid="request-amount"
+          >
             {centsToDollars(request.amount_cents)}
           </p>
-          <div className="mt-2" data-testid="request-status">
+          <div className="mt-3 flex justify-center" data-testid="request-status">
             <StatusBadge status={request.status} />
           </div>
         </div>
 
-        {request.note && (
-          <div className="rounded-md bg-gray-50 p-3">
-            <p className="text-sm text-gray-700">{request.note}</p>
-          </div>
-        )}
-
-        <dl className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <dt className="text-gray-500">From</dt>
-            <dd className="font-medium text-gray-900">{senderEmail}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-gray-500">To</dt>
-            <dd className="font-medium text-gray-900">{counterparty}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-gray-500">Created</dt>
-            <dd className="text-gray-700">
-              {format(new Date(request.created_at), 'MMM d, yyyy')}
-            </dd>
-          </div>
-          {request.status === 'pending' && (
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Expires</dt>
-              <dd className="text-amber-600 font-medium">
-                {formatDistanceToNow(new Date(request.expires_at), { addSuffix: true })}
-              </dd>
+        {/* Details */}
+        <div className="px-6 py-5 space-y-4">
+          {request.note && (
+            <div className="rounded-xl bg-muted/60 border border-border/60 px-4 py-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                Note
+              </p>
+              <p className="text-sm text-foreground leading-relaxed">{request.note}</p>
             </div>
           )}
-        </dl>
 
-        {terminalTimestamp() && (
-          <p className="text-sm text-gray-500 text-center pt-2 border-t border-gray-100">
-            {terminalTimestamp()}
-          </p>
-        )}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <div>
+              <dt className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">From</dt>
+              <dd className="font-medium text-foreground truncate" title={senderEmail}>
+                {senderEmail}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">To</dt>
+              <dd className="font-medium text-foreground truncate" title={counterparty}>
+                {counterparty}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">
+                Created
+              </dt>
+              <dd className="text-foreground">
+                {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
+              </dd>
+            </div>
+            {request.status === 'pending' && (
+              <div>
+                <dt className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Expires
+                </dt>
+                <dd>
+                  <ExpiryCountdown expiresAt={request.expires_at} />
+                </dd>
+              </div>
+            )}
+          </dl>
+
+          {termTs && (
+            <div className="pt-3 border-t border-border text-sm text-muted-foreground text-center">
+              {termTs}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Action buttons — pending only */}
+      {/* Action card — pending only */}
       {request.status === 'pending' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
           {viewerRole === 'recipient' && (
             <>
-              <Button
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
-                disabled={isPaying}
-                onClick={handlePay}
-                data-testid="pay-button"
-              >
-                {isPaying ? 'Processing…' : 'Pay'}
-              </Button>
+              {/* Pay button */}
+              <div className="relative">
+                {!isPaying && (
+                  <span
+                    className="absolute inset-0 rounded-md bg-emerald-500/20"
+                    style={{ animation: 'ring-expand 2s ease-out 1s infinite' }}
+                  />
+                )}
+                <Button
+                  className="w-full relative bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
+                  disabled={isPaying}
+                  onClick={handlePay}
+                  data-testid="request-pay-button"
+                >
+                  {isPaying ? (
+                    <span className="flex items-center gap-2">
+                      <span className="inline-flex gap-1">
+                        {[0, 1, 2].map((i) => (
+                          <span
+                            key={i}
+                            className="w-1.5 h-1.5 rounded-full bg-white/80"
+                            style={{
+                              animation: `particle-float 0.8s ease-in-out ${i * 150}ms infinite`,
+                            }}
+                          />
+                        ))}
+                      </span>
+                      Processing payment…
+                    </span>
+                  ) : (
+                    'Pay ' + centsToDollars(request.amount_cents)
+                  )}
+                </Button>
+              </div>
               <Button
                 variant="outline"
-                className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50"
                 onClick={() => setShowDeclineDialog(true)}
-                data-testid="decline-button"
+                data-testid="request-decline-button"
               >
                 Decline
               </Button>
@@ -192,39 +241,57 @@ export default function RequestDetailClient({
             <>
               <Button
                 variant="outline"
-                className="w-full text-red-600 border-red-300 hover:bg-red-50"
-                onClick={() => setShowCancelDialog(true)}
-                data-testid="cancel-button"
-              >
-                Cancel Request
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
+                className="w-full transition-all"
                 onClick={handleCopyLink}
                 data-testid="copy-link-button"
               >
-                Copy Link
+                {copied ? '✓ Copied!' : 'Copy Shareable Link'}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50"
+                onClick={() => setShowCancelDialog(true)}
+                data-testid="request-cancel-button"
+              >
+                Cancel Request
               </Button>
             </>
           )}
         </div>
       )}
 
-      {/* Decline confirmation dialog */}
+      {/* Sender can still copy link even on non-pending */}
+      {request.status !== 'pending' && viewerRole === 'sender' && (
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <Button
+            variant="outline"
+            className="w-full transition-all"
+            onClick={handleCopyLink}
+            data-testid="copy-link-button"
+          >
+            {copied ? '✓ Copied!' : 'Copy Link'}
+          </Button>
+        </div>
+      )}
+
+      {/* Decline dialog */}
       <Dialog open={showDeclineDialog} onOpenChange={setShowDeclineDialog}>
         <DialogContent data-testid="confirm-dialog">
           <DialogHeader>
-            <DialogTitle>Decline request?</DialogTitle>
+            <DialogTitle>Decline this request?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600">
-            Are you sure you want to decline this request for{' '}
-            <strong>{centsToDollars(request.amount_cents)}</strong> from{' '}
-            <strong>{senderEmail}</strong>?
+          <p className="text-sm text-muted-foreground">
+            You&apos;re about to decline a request for{' '}
+            <strong className="text-foreground">{centsToDollars(request.amount_cents)}</strong> from{' '}
+            <strong className="text-foreground">{senderEmail}</strong>. This cannot be undone.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeclineDialog(false)} data-testid="dialog-cancel">
-              Cancel
+            <Button
+              variant="outline"
+              onClick={() => setShowDeclineDialog(false)}
+              data-testid="dialog-cancel"
+            >
+              Keep
             </Button>
             <Button
               variant="destructive"
@@ -238,17 +305,23 @@ export default function RequestDetailClient({
         </DialogContent>
       </Dialog>
 
-      {/* Cancel confirmation dialog */}
+      {/* Cancel dialog */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <DialogContent data-testid="confirm-dialog">
           <DialogHeader>
-            <DialogTitle>Cancel request?</DialogTitle>
+            <DialogTitle>Cancel this request?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600">
-            Are you sure you want to cancel this request?
+          <p className="text-sm text-muted-foreground">
+            This will cancel your{' '}
+            <strong className="text-foreground">{centsToDollars(request.amount_cents)}</strong>{' '}
+            request. The recipient will no longer be able to pay it.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCancelDialog(false)} data-testid="dialog-cancel">
+            <Button
+              variant="outline"
+              onClick={() => setShowCancelDialog(false)}
+              data-testid="dialog-cancel"
+            >
               Keep
             </Button>
             <Button

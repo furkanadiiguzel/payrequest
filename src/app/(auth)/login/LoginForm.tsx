@@ -54,7 +54,7 @@ export default function LoginForm({ returnUrl }: LoginFormProps) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" data-testid="login-form">
           {serverError && (
             <div
-              className="rounded-md bg-red-50 p-3 text-sm text-red-700"
+              className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
               data-testid="login-error"
             >
               {serverError}
@@ -67,11 +67,11 @@ export default function LoginForm({ returnUrl }: LoginFormProps) {
               id="email"
               type="email"
               autoComplete="email"
-              data-testid="login-email"
+              data-testid="login-email-input"
               {...register('email')}
             />
             {errors.email && (
-              <p className="text-xs text-red-600" data-testid="email-error">
+              <p className="text-xs text-destructive" data-testid="email-error">
                 {errors.email.message}
               </p>
             )}
@@ -83,11 +83,11 @@ export default function LoginForm({ returnUrl }: LoginFormProps) {
               id="password"
               type="password"
               autoComplete="current-password"
-              data-testid="login-password"
+              data-testid="login-password-input"
               {...register('password')}
             />
             {errors.password && (
-              <p className="text-xs text-red-600" data-testid="password-error">
+              <p className="text-xs text-destructive" data-testid="password-error">
                 {errors.password.message}
               </p>
             )}
@@ -97,15 +97,15 @@ export default function LoginForm({ returnUrl }: LoginFormProps) {
             type="submit"
             className="w-full"
             disabled={isSubmitting}
-            data-testid="login-submit"
+            data-testid="login-submit-button"
           >
             {isSubmitting ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-600">
+        <p className="mt-4 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-indigo-600 hover:text-indigo-500 font-medium">
+          <Link href="/signup" className="text-primary hover:text-primary/80 font-medium">
             Sign up
           </Link>
         </p>

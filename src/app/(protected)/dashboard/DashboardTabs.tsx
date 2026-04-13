@@ -50,7 +50,7 @@ export default function DashboardTabs({ sentRequests, receivedRequests }: Dashbo
 
     if (requests.length === 0) {
       return (
-        <div className="text-center py-16 text-gray-500" data-testid="empty-state">
+        <div className="text-center py-16 text-muted-foreground" data-testid="empty-state">
           <p className="mb-4">{emptyMessage}</p>
           <Link href="/request/new">
             <Button data-testid="empty-cta">Send your first request!</Button>
@@ -61,11 +61,11 @@ export default function DashboardTabs({ sentRequests, receivedRequests }: Dashbo
 
     if (filtered.length === 0) {
       return (
-        <div className="text-center py-16 text-gray-500" data-testid="no-results-state">
+        <div className="text-center py-16 text-muted-foreground" data-testid="no-results-state">
           <p className="mb-2">No requests match your filters.</p>
           <button
             onClick={clearFilters}
-            className="text-indigo-600 hover:text-indigo-500 text-sm font-medium"
+            className="text-primary hover:text-primary/80 text-sm font-medium"
             data-testid="clear-filters-btn"
           >
             Clear filters
@@ -109,10 +109,10 @@ export default function DashboardTabs({ sentRequests, receivedRequests }: Dashbo
 
       <Tabs defaultValue="sent">
         <TabsList data-testid="tabs-list">
-          <TabsTrigger value="sent" data-testid="sent-tab">
+          <TabsTrigger value="sent" data-testid="dashboard-sent-tab">
             Sent
           </TabsTrigger>
-          <TabsTrigger value="received" data-testid="received-tab">
+          <TabsTrigger value="received" data-testid="dashboard-received-tab">
             Received
           </TabsTrigger>
         </TabsList>

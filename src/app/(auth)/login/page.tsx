@@ -1,4 +1,7 @@
+import type { Metadata } from 'next';
 import LoginForm from './LoginForm';
+
+export const metadata: Metadata = { title: 'Sign In' };
 
 interface LoginPageProps {
   searchParams: Promise<{ returnUrl?: string }>;

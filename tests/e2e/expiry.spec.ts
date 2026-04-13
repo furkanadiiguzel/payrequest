@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { loginAs } from '../helpers/auth';
 import { ALICE, BOB } from '../helpers/seed';
 import { createTestRequest } from '../helpers/db';
+import { DashboardPage } from '../pages/DashboardPage';
 
 const PAST_DATE = new Date(Date.now() - 1000).toISOString(); // 1 second in the past
 
@@ -13,8 +14,10 @@ test.describe('Request Expiration', () => {
       expiresAt: PAST_DATE,
     });
     await loginAs(page, ALICE.email, ALICE.password);
-    await page.goto('/dashboard');
-    await expect(page.getByText('Expired').first()).toBeVisible();
+    const dashboard = new DashboardPage(page);
+    await dashboard.goto();
+    // Scope to request-list to avoid matching the 'Expired' option in the status filter dropdown
+    await expect(page.getByTestId('request-list').getByText('Expired').first()).toBeVisible();
   });
 
   test('expired request detail shows banner and no action buttons', async ({ page }) => {
@@ -25,9 +28,11 @@ test.describe('Request Expiration', () => {
     });
     await loginAs(page, BOB.email, BOB.password);
     await page.goto(`/request/${request.id}`);
-    await expect(page.getByText(/expired on/i)).toBeVisible();
-    await expect(page.getByTestId('pay-button')).not.toBeVisible();
-    await expect(page.getByTestId('decline-button')).not.toBeVisible();
+    // Text is "Expired <relative-time>" (e.g. "Expired less than a minute ago")
+    await expect(page.getByText(/expired/i).first()).toBeVisible();
+    // Action buttons are absent for expired requests
+    await expect(page.getByTestId('request-pay-button')).not.toBeVisible();
+    await expect(page.getByTestId('request-decline-button')).not.toBeVisible();
   });
 
   test('expired request via shareable link shows "This request has expired" banner', async ({ page }) => {

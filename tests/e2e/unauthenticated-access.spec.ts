@@ -12,12 +12,12 @@ test.describe('Unauthenticated Access (Shareable Link)', () => {
       note: 'Dinner split',
     });
     await page.goto(`/request/${request.id}`);
-    // Amount visible
-    await expect(page.getByText('$50.00')).toBeVisible();
+    // Amount visible — scope to request-amount to avoid strict-mode violation
+    await expect(page.getByTestId('request-amount')).toContainText('$50.00');
     // Note visible
-    await expect(page.getByText('Dinner split')).toBeVisible();
-    // Masked email visible (a***@...)
-    await expect(page.getByText(/\*\*\*@/)).toBeVisible();
+    await expect(page.getByText('Dinner split').first()).toBeVisible();
+    // Masked email visible (t***@...) — scoped to avoid other text on page
+    await expect(page.getByText(/\*\*\*@/).first()).toBeVisible();
     // CTA buttons
     await expect(page.getByTestId('login-to-respond-btn')).toBeVisible();
     await expect(page.getByTestId('signup-link')).toBeVisible();
@@ -43,11 +43,11 @@ test.describe('Unauthenticated Access (Shareable Link)', () => {
     await page.goto(`/request/${request.id}`);
     await page.getByTestId('login-to-respond-btn').click();
     // Login as BOB (the recipient)
-    await page.getByTestId('login-email').fill(BOB.email);
-    await page.getByTestId('login-password').fill(BOB.password);
-    await page.getByTestId('login-submit').click();
-    await expect(page).toHaveURL(new RegExp(`/request/${request.id}`));
-    await expect(page.getByTestId('pay-button')).toBeVisible();
+    await page.getByTestId('login-email-input').fill(BOB.email);
+    await page.getByTestId('login-password-input').fill(BOB.password);
+    await page.getByTestId('login-submit-button').click();
+    await expect(page).toHaveURL(new RegExp(`/request/${request.id}`), { timeout: 30_000 });
+    await expect(page.getByTestId('request-pay-button')).toBeVisible();
   });
 
   test('after login as unrelated user, redirected back to request → 404', async ({ page }) => {

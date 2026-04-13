@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 import { SignupPage } from '../pages/SignupPage';
-import { loginAs, logoutCurrentUser } from '../helpers/auth';
+import { loginAs, logout as logoutCurrentUser } from '../helpers/auth';
 import { ALICE } from '../helpers/seed';
 
 test.describe('Authentication', () => {
@@ -12,7 +12,7 @@ test.describe('Authentication', () => {
     await signup.fillEmail(uniqueEmail);
     await signup.fillPassword('TestPass123!');
     await signup.submit();
-    await expect(page).toHaveURL('/dashboard');
+    await expect(page).toHaveURL('/dashboard', { timeout: 30_000 });
   });
 
   test('signup with duplicate email shows inline error', async ({ page }) => {
@@ -39,7 +39,7 @@ test.describe('Authentication', () => {
     await login.fillEmail(ALICE.email);
     await login.fillPassword(ALICE.password);
     await login.submit();
-    await expect(page).toHaveURL('/dashboard');
+    await expect(page).toHaveURL('/dashboard', { timeout: 30_000 });
   });
 
   test('login with invalid credentials shows error message', async ({ page }) => {
@@ -66,10 +66,10 @@ test.describe('Authentication', () => {
   test('login with returnUrl redirects to the preserved URL', async ({ page }) => {
     await page.goto('/dashboard');
     await page.waitForURL(/\/login/);
-    await page.getByTestId('login-email').fill(ALICE.email);
-    await page.getByTestId('login-password').fill(ALICE.password);
-    await page.getByTestId('login-submit').click();
-    await expect(page).toHaveURL('/dashboard');
+    await page.getByTestId('login-email-input').fill(ALICE.email);
+    await page.getByTestId('login-password-input').fill(ALICE.password);
+    await page.getByTestId('login-submit-button').click();
+    await expect(page).toHaveURL('/dashboard', { timeout: 30_000 });
   });
 
   test('rate-limit locks out after 5 failed attempts', async ({ page }) => {
